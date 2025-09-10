@@ -1,11 +1,9 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:o_song_app/config.dart';
 
 /// Data source để tương tác với YouTube Data API v3
-///
-/// Cung cấp các method để lấy thông tin video và playlist từ YouTube
-/// Requires: YouTube Data API v3 key trong Config.youtubeApiKey
 class YouTubeRemoteDataSource {
   // Base URL cho tất cả YouTube API endpoints
   static const String _baseUrl = 'https://www.googleapis.com/youtube/v3';
@@ -17,11 +15,6 @@ class YouTubeRemoteDataSource {
   static const Duration _timeout = Duration(seconds: 30);
 
   /// Lấy thông tin chi tiết của video từ YouTube API
-  ///
-  /// [videoId] - ID của YouTube video (11 ký tự)
-  ///
-  /// Returns [Map<String, dynamic>] chứa thông tin video
-  /// Throws [Exception] nếu có lỗi xảy ra
   Future<Map<String, dynamic>> getVideoData(String videoId) async {
     try {
       // Validate input
@@ -39,7 +32,8 @@ class YouTubeRemoteDataSource {
       }
 
       // Construct API URL
-      final url = '$_baseUrl/videos'
+      final url =
+          '$_baseUrl/videos'
           '?part=snippet,contentDetails'
           '&id=$videoId'
           '&key=${Config.youtubeApiKey}';
@@ -47,9 +41,7 @@ class YouTubeRemoteDataSource {
       print('Fetching video data for ID: $videoId');
 
       // Make HTTP request with timeout
-      final response = await _client
-          .get(Uri.parse(url))
-          .timeout(_timeout);
+      final response = await _client.get(Uri.parse(url)).timeout(_timeout);
 
       // Handle HTTP response
       if (response.statusCode == 200) {
@@ -57,7 +49,9 @@ class YouTubeRemoteDataSource {
 
         // Check if video exists
         if (data['items'] != null && data['items'].isNotEmpty) {
-          print('Successfully fetched video data: ${data['items'][0]['snippet']['title']}');
+          print(
+            'Successfully fetched video data: ${data['items'][0]['snippet']['title']}',
+          );
           return data;
         } else {
           throw Exception('Video not found or may be private/deleted');
@@ -65,14 +59,20 @@ class YouTubeRemoteDataSource {
       } else if (response.statusCode == 400) {
         throw Exception('Invalid request. Please check video ID format.');
       } else if (response.statusCode == 403) {
-        throw Exception('API quota exceeded or invalid API key. Please try again later.');
+        throw Exception(
+          'API quota exceeded or invalid API key. Please try again later.',
+        );
       } else if (response.statusCode == 404) {
         throw Exception('Video not found');
       } else {
-        throw Exception('HTTP error ${response.statusCode}: ${response.reasonPhrase}');
+        throw Exception(
+          'HTTP error ${response.statusCode}: ${response.reasonPhrase}',
+        );
       }
     } on TimeoutException {
-      throw Exception('Request timeout. Please check your internet connection.');
+      throw Exception(
+        'Request timeout. Please check your internet connection.',
+      );
     } catch (e) {
       print('Error in getVideoData: $e');
       if (e is Exception) rethrow;
@@ -81,11 +81,6 @@ class YouTubeRemoteDataSource {
   }
 
   /// Lấy thông tin playlist từ YouTube API
-  ///
-  /// [playlistId] - ID của YouTube playlist
-  ///
-  /// Returns [Map<String, dynamic>] chứa thông tin playlist
-  /// Throws [Exception] nếu có lỗi xảy ra
   Future<Map<String, dynamic>> getPlaylistData(String playlistId) async {
     try {
       // Validate input
@@ -99,7 +94,8 @@ class YouTubeRemoteDataSource {
       }
 
       // Construct API URL
-      final url = '$_baseUrl/playlists'
+      final url =
+          '$_baseUrl/playlists'
           '?part=snippet,contentDetails'
           '&id=$playlistId'
           '&key=${Config.youtubeApiKey}';
@@ -107,9 +103,7 @@ class YouTubeRemoteDataSource {
       print('Fetching playlist data for ID: $playlistId');
 
       // Make HTTP request with timeout
-      final response = await _client
-          .get(Uri.parse(url))
-          .timeout(_timeout);
+      final response = await _client.get(Uri.parse(url)).timeout(_timeout);
 
       // Handle HTTP response
       if (response.statusCode == 200) {
@@ -117,7 +111,9 @@ class YouTubeRemoteDataSource {
 
         // Check if playlist exists
         if (data['items'] != null && data['items'].isNotEmpty) {
-          print('Successfully fetched playlist data: ${data['items'][0]['snippet']['title']}');
+          print(
+            'Successfully fetched playlist data: ${data['items'][0]['snippet']['title']}',
+          );
           return data;
         } else {
           throw Exception('Playlist not found or may be private');
@@ -125,14 +121,20 @@ class YouTubeRemoteDataSource {
       } else if (response.statusCode == 400) {
         throw Exception('Invalid request. Please check playlist ID format.');
       } else if (response.statusCode == 403) {
-        throw Exception('API quota exceeded or invalid API key. Please try again later.');
+        throw Exception(
+          'API quota exceeded or invalid API key. Please try again later.',
+        );
       } else if (response.statusCode == 404) {
         throw Exception('Playlist not found');
       } else {
-        throw Exception('HTTP error ${response.statusCode}: ${response.reasonPhrase}');
+        throw Exception(
+          'HTTP error ${response.statusCode}: ${response.reasonPhrase}',
+        );
       }
     } on TimeoutException {
-      throw Exception('Request timeout. Please check your internet connection.');
+      throw Exception(
+        'Request timeout. Please check your internet connection.',
+      );
     } catch (e) {
       print('Error in getPlaylistData: $e');
       if (e is Exception) rethrow;
@@ -141,17 +143,6 @@ class YouTubeRemoteDataSource {
   }
 
   /// Trích xuất video ID từ YouTube URL
-  ///
-  /// Hỗ trợ các format URL:
-  /// - https://www.youtube.com/watch?v=VIDEO_ID
-  /// - https://youtu.be/VIDEO_ID
-  /// - https://www.youtube.com/embed/VIDEO_ID
-  /// - https://www.youtube.com/v/VIDEO_ID
-  ///
-  /// [url] - YouTube video URL
-  ///
-  /// Returns [String] - Video ID (11 ký tự)
-  /// Throws [Exception] nếu URL không hợp lệ
   String extractVideoId(String url) {
     try {
       // Validate input
@@ -166,7 +157,9 @@ class YouTubeRemoteDataSource {
 
       // Handle youtu.be format
       if (uri.host.contains('youtu.be')) {
-        final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
+        final videoId = uri.pathSegments.isNotEmpty
+            ? uri.pathSegments.first
+            : null;
         if (videoId != null && videoId.length == 11) {
           print('Extracted video ID: $videoId');
           return videoId;
@@ -183,8 +176,10 @@ class YouTubeRemoteDataSource {
         }
 
         // Check embed format
-        if (uri.pathSegments.contains('embed') && uri.pathSegments.length >= 2) {
-          final videoId = uri.pathSegments[uri.pathSegments.indexOf('embed') + 1];
+        if (uri.pathSegments.contains('embed') &&
+            uri.pathSegments.length >= 2) {
+          final videoId =
+              uri.pathSegments[uri.pathSegments.indexOf('embed') + 1];
           if (videoId.length >= 11) {
             final cleanId = videoId.substring(0, 11);
             print('Extracted video ID from embed: $cleanId');
@@ -224,13 +219,6 @@ class YouTubeRemoteDataSource {
   }
 
   /// Trích xuất playlist ID từ YouTube URL
-  ///
-  /// Hỗ trợ các format URL có chứa parameter 'list'
-  ///
-  /// [url] - YouTube playlist URL
-  ///
-  /// Returns [String] - Playlist ID
-  /// Throws [Exception] nếu URL không hợp lệ
   String extractPlaylistId(String url) {
     try {
       // Validate input
@@ -267,10 +255,6 @@ class YouTubeRemoteDataSource {
   }
 
   /// Kiểm tra xem URL có phải là YouTube URL hợp lệ không
-  ///
-  /// [url] - URL cần kiểm tra
-  ///
-  /// Returns [bool] - true nếu là YouTube URL hợp lệ
   static bool isValidYouTubeUrl(String url) {
     try {
       if (url.isEmpty) return false;
@@ -285,8 +269,6 @@ class YouTubeRemoteDataSource {
   }
 
   /// Cleanup HTTP client
-  ///
-  /// Nên gọi khi không cần sử dụng datasource nữa
   static void dispose() {
     _client.close();
     print('HTTP client disposed');

@@ -7,7 +7,7 @@ class AddMusicPage extends StatefulWidget {
   const AddMusicPage({Key? key}) : super(key: key);
 
   @override
-  _AddMusicPageState createState() => _AddMusicPageState();
+  State<AddMusicPage> createState() => _AddMusicPageState();
 }
 
 class _AddMusicPageState extends State<AddMusicPage> {
@@ -24,6 +24,23 @@ class _AddMusicPageState extends State<AddMusicPage> {
     return regExp.hasMatch(url);
   }
 
+  String _extractVideoId(String url) {
+    try {
+      // Handle youtu.be format
+      if (url.contains('youtu.be/')) {
+        return url.split('youtu.be/')[1].split('?')[0];
+      }
+      // Handle youtube.com format
+      if (url.contains('watch?v=')) {
+        return url.split('watch?v=')[1].split('&')[0];
+      }
+      // Fallback
+      return DateTime.now().millisecondsSinceEpoch.toString();
+    } catch (e) {
+      return DateTime.now().millisecondsSinceEpoch.toString();
+    }
+  }
+
   Future<void> _addMusic() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -33,25 +50,32 @@ class _AddMusicPageState extends State<AddMusicPage> {
     });
 
     try {
-      if (!_isValidYouTubeUrl(_urlController.text)) {
+      if (!_isValidYouTubeUrl(_urlController.text.trim())) {
         throw Exception('Invalid YouTube URL');
       }
 
-      // Trong thực tế, bạn sẽ gọi YouTube API ở đây
-      final videoId = _urlController.text.contains('youtu')
-          ? _urlController.text.split('v=')[1].split('&')[0]
-          : DateTime.now().millisecondsSinceEpoch.toString();
+      final videoId = _extractVideoId(_urlController.text.trim());
 
       final music = MusicEntity(
         id: videoId,
-        title: 'Video từ URL',
-        // Sẽ được cập nhật sau khi gọi API
-        thumbnailUrl: 'https://img.youtube.com/vi/$videoId/default.jpg',
-        videoUrl: _urlController.text,
+        title: 'Loading...',
+        // Will be updated by repository
+        thumbnailUrl: 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+        videoUrl: _urlController.text.trim(),
         duration: const Duration(minutes: 3, seconds: 45),
       );
 
       context.read<MusicListBloc>().add(AddMusicItem(music: music));
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Music added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
 
       Navigator.pop(context);
     } catch (e) {
@@ -66,6 +90,12 @@ class _AddMusicPageState extends State<AddMusicPage> {
   }
 
   @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Add Music')),
@@ -74,40 +104,87 @@ class _AddMusicPageState extends State<AddMusicPage> {
         child: Form(
           key: _formKey,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Text(
+                'Add a YouTube video to your music collection',
+                style: TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _urlController,
                 decoration: const InputDecoration(
                   labelText: 'YouTube URL',
-                  hintText: 'Paste YouTube video URL here',
+                  hintText: 'https://www.youtube.com/watch?v=...',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.link),
                 ),
+                keyboardType: TextInputType.url,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null || value.trim().isEmpty) {
                     return 'Please enter a YouTube URL';
                   }
-                  if (!_isValidYouTubeUrl(value)) {
+                  if (!_isValidYouTubeUrl(value.trim())) {
                     return 'Please enter a valid YouTube URL';
                   }
                   return null;
                 },
+                maxLines: 2,
+                minLines: 1,
               ),
-              const SizedBox(height: 16),
-              if (_isLoading)
-                const CircularProgressIndicator()
-              else
-                ElevatedButton(
-                  onPressed: _addMusic,
-                  child: const Text('Add Music'),
+              const SizedBox(height: 24),
+              if (_isLoading) ...[
+                const Center(child: CircularProgressIndicator()),
+                const SizedBox(height: 16),
+                const Text(
+                  'Adding music...',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
                 ),
-              if (_errorMessage.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 16.0),
-                  child: Text(
-                    _errorMessage,
-                    style: TextStyle(color: Theme.of(context).errorColor),
+              ] else
+                ElevatedButton.icon(
+                  onPressed: _addMusic,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Music'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
+              if (_errorMessage.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _errorMessage,
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 24),
+              const Divider(),
+              const SizedBox(height: 16),
+              const Text(
+                'Supported formats:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text('• https://www.youtube.com/watch?v=VIDEO_ID'),
+              const Text('• https://youtu.be/VIDEO_ID'),
+              const Text('• https://m.youtube.com/watch?v=VIDEO_ID'),
             ],
           ),
         ),

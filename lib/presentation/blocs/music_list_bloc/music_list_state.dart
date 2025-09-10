@@ -1,6 +1,5 @@
 part of 'music_list_bloc.dart';
 
-@immutable
 abstract class MusicListState extends Equatable {
   const MusicListState();
 

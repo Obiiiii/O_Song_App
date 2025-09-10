@@ -13,8 +13,6 @@ import 'package:o_song_app/presentation/blocs/music_list_bloc/music_list_bloc.da
 import 'package:o_song_app/presentation/pages/home_page.dart';
 
 /// Entry point của ứng dụng
-///
-/// Khởi tạo các dependencies và chạy app
 void main() async {
   // Đảm bảo Flutter framework được khởi tạo trước khi chạy async code
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,142 +28,122 @@ void main() async {
     print('Initializing Hive database...');
     await HiveHelper.init();
     print('Hive database initialized successfully');
-  } catch (e) {
+
+    // Run main app
+    runApp(const MyApp());
+  } catch (e, stackTrace) {
     print('Failed to initialize Hive: $e');
+    print('Stack trace: $stackTrace');
     // Show error dialog or handle gracefully
     runApp(ErrorApp(message: 'Failed to initialize database: $e'));
-    return;
   }
-
-  // Run main app
-  runApp(MyApp());
 }
 
 /// Main application widget
-///
-/// Thiết lập dependency injection và routing
 class MyApp extends StatelessWidget {
-  /// Tạo repository instance với dependencies
-  ///
-  /// Sử dụng dependency injection pattern để dễ test và maintain
-  late final MusicRepository _musicRepository = MusicRepositoryImpl(
-    remoteDataSource: YouTubeRemoteDataSource(),
-    localDataSource: LocalMusicDataSource(),
-  );
-
-  MyApp({Key? key}) : super(key: key);
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      // Cung cấp BLoC instances cho toàn bộ app
-      providers: [
-        BlocProvider<MusicListBloc>(
-          create: (context) => MusicListBloc(
-            getMusicList: GetMusicList(_musicRepository),
-            addMusic: AddMusic(_musicRepository),
-            removeMusic: RemoveMusic(_musicRepository),
-          )..add(LoadMusicList()), // Load data ngay khi khởi tạo
+    return MaterialApp(
+      title: 'O Song App',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
         ),
-      ],
-      child: MaterialApp(
-        // App configuration
-        title: 'O Song App',
-        debugShowCheckedModeBanner: false,
-
-        // Theme configuration
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          primaryColor: Colors.blue[600],
-
-          // Modern Material Design 3
-          useMaterial3: true,
-
-          // Color scheme
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.light,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
-
-          // Visual density for different platforms
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-
-          // AppBar theme
-          appBarTheme: AppBarTheme(
-            elevation: 0,
-            centerTitle: true,
-            backgroundColor: Colors.blue[600],
-            foregroundColor: Colors.white,
-            titleTextStyle: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+        ),
+        cardTheme: CardTheme(
+          elevation: 2,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-
-          // Card theme
-          cardTheme: CardTheme(
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
             elevation: 2,
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-
-          // Button themes
-          elevatedButtonTheme: ElevatedButtonThemeData(
-            style: ElevatedButton.styleFrom(
-              elevation: 2,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-          ),
-
-          // Input decoration theme
-          inputDecorationTheme: InputDecorationTheme(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
         ),
-
-        // Dark theme (optional)
-        darkTheme: ThemeData(
-          primarySwatch: Colors.blue,
-          brightness: Brightness.dark,
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.dark,
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
           ),
-          visualDensity: VisualDensity.adaptivePlatformDensity,
         ),
-
-        // Follow system theme
-        themeMode: ThemeMode.system,
-
-        // Home page
-        home: const HomePage(),
-
-        // Error handling
-        builder: (context, child) {
-          // Handle global errors
-          ErrorWidget.builder = (FlutterErrorDetails errorDetails) {
-            return ErrorDisplayWidget(error: errorDetails.exception.toString());
-          };
-
-          return child!;
-        },
       ),
+      darkTheme: ThemeData(
+        primarySwatch: Colors.blue,
+        brightness: Brightness.dark,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+        ),
+      ),
+      themeMode: ThemeMode.system,
+      home: const HomePage(),
+      builder: (context, child) {
+        // Chỉ set ErrorWidget.builder một lần, không nên set trong mỗi build
+        return child!;
+      },
     );
   }
 }
 
-/// Widget hiển thị khi có lỗi khởi tạo app
+/// Wrapper widget để cung cấp Bloc cho HomePage
+class MyAppWithBloc extends StatelessWidget {
+  const MyAppWithBloc({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Tạo repository instance với dependencies
+    final MusicRepository musicRepository = MusicRepositoryImpl(
+      remoteDataSource: YouTubeRemoteDataSource(),
+      localDataSource: LocalMusicDataSource(),
+    );
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<MusicListBloc>(
+          create: (context) => MusicListBloc(
+            getMusicList: GetMusicList(musicRepository),
+            addMusic: AddMusic(musicRepository),
+            removeMusic: RemoveMusic(musicRepository),
+          )..add(LoadMusicList()),
+        ),
+      ],
+      child: const MyApp(),
+    );
+  }
+}
+
 class ErrorApp extends StatelessWidget {
   final String message;
 
@@ -175,7 +153,16 @@ class ErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Error',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
+      ),
       home: Scaffold(
+        appBar: AppBar(
+          title: const Text('Application Error'),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -197,9 +184,14 @@ class ErrorApp extends StatelessWidget {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: () {
-                    // Restart app
-                    SystemNavigator.pop();
+                    // Thay vì SystemNavigator.pop(), nên restart app
+                    // Đây là cách đơn giản, trong thực tế có thể cần dùng package như restart_app
+                    runApp(const MyAppWithBloc());
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Restart App'),
                 ),
               ],
@@ -211,7 +203,13 @@ class ErrorApp extends StatelessWidget {
   }
 }
 
-/// Widget hiển thị lỗi trong quá trình chạy app
+// Di chuyển ErrorWidget.builder ra khỏi build method
+void setupErrorHandling() {
+  ErrorWidget.builder = (FlutterErrorDetails errorDetails) {
+    return ErrorDisplayWidget(error: errorDetails.exception.toString());
+  };
+}
+
 class ErrorDisplayWidget extends StatelessWidget {
   final String error;
 
@@ -241,6 +239,14 @@ class ErrorDisplayWidget extends StatelessWidget {
               error,
               style: const TextStyle(fontSize: 14),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Quay lại màn hình trước hoặc restart app
+                runApp(const MyAppWithBloc());
+              },
+              child: const Text('Go Back'),
             ),
           ],
         ),
