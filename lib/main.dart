@@ -23,19 +23,49 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
+  // Setup error handling
+  setupErrorHandling();
+
   // Initialize local database
   try {
     print('Initializing Hive database...');
     await HiveHelper.init();
     print('Hive database initialized successfully');
 
-    // Run main app
-    runApp(const MyApp());
+    // Run main app với BlocProvider
+    runApp(const MyAppWithBloc());
   } catch (e, stackTrace) {
     print('Failed to initialize Hive: $e');
     print('Stack trace: $stackTrace');
     // Show error dialog or handle gracefully
     runApp(ErrorApp(message: 'Failed to initialize database: $e'));
+  }
+}
+
+/// Wrapper widget để cung cấp Bloc cho toàn bộ app
+class MyAppWithBloc extends StatelessWidget {
+  const MyAppWithBloc({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Tạo repository instance với dependencies
+    final MusicRepository musicRepository = MusicRepositoryImpl(
+      remoteDataSource: YouTubeRemoteDataSource(),
+      localDataSource: LocalMusicDataSource(),
+    );
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<MusicListBloc>(
+          create: (context) => MusicListBloc(
+            getMusicList: GetMusicList(musicRepository),
+            addMusic: AddMusic(musicRepository),
+            removeMusic: RemoveMusic(musicRepository),
+          )..add(LoadMusicList()), // Load data ngay khi khởi tạo
+        ),
+      ],
+      child: const MyApp(),
+    );
   }
 }
 
@@ -67,7 +97,7 @@ class MyApp extends StatelessWidget {
             color: Colors.white,
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 2,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           shape: RoundedRectangleBorder(
@@ -109,37 +139,6 @@ class MyApp extends StatelessWidget {
       ),
       themeMode: ThemeMode.system,
       home: const HomePage(),
-      builder: (context, child) {
-        // Chỉ set ErrorWidget.builder một lần, không nên set trong mỗi build
-        return child!;
-      },
-    );
-  }
-}
-
-/// Wrapper widget để cung cấp Bloc cho HomePage
-class MyAppWithBloc extends StatelessWidget {
-  const MyAppWithBloc({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    // Tạo repository instance với dependencies
-    final MusicRepository musicRepository = MusicRepositoryImpl(
-      remoteDataSource: YouTubeRemoteDataSource(),
-      localDataSource: LocalMusicDataSource(),
-    );
-
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<MusicListBloc>(
-          create: (context) => MusicListBloc(
-            getMusicList: GetMusicList(musicRepository),
-            addMusic: AddMusic(musicRepository),
-            removeMusic: RemoveMusic(musicRepository),
-          )..add(LoadMusicList()),
-        ),
-      ],
-      child: const MyApp(),
     );
   }
 }
@@ -183,10 +182,15 @@ class ErrorApp extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: () {
-                    // Thay vì SystemNavigator.pop(), nên restart app
-                    // Đây là cách đơn giản, trong thực tế có thể cần dùng package như restart_app
-                    runApp(const MyAppWithBloc());
+                  onPressed: () async {
+                    // Restart app properly
+                    try {
+                      await HiveHelper.init();
+                      runApp(const MyAppWithBloc());
+                    } catch (e) {
+                      // If still fails, show system navigation
+                      SystemNavigator.pop();
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red,
@@ -203,7 +207,7 @@ class ErrorApp extends StatelessWidget {
   }
 }
 
-// Di chuyển ErrorWidget.builder ra khỏi build method
+// Setup error handling for the entire app
 void setupErrorHandling() {
   ErrorWidget.builder = (FlutterErrorDetails errorDetails) {
     return ErrorDisplayWidget(error: errorDetails.exception.toString());
@@ -242,9 +246,13 @@ class ErrorDisplayWidget extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                // Quay lại màn hình trước hoặc restart app
-                runApp(const MyAppWithBloc());
+              onPressed: () async {
+                try {
+                  await HiveHelper.init();
+                  runApp(const MyAppWithBloc());
+                } catch (e) {
+                  SystemNavigator.pop();
+                }
               },
               child: const Text('Go Back'),
             ),
